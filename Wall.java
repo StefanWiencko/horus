@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -8,7 +10,7 @@ class Wall implements Structure {
     private final List<Block> blocks;
 
     public Wall(List<Block> list) {
-        this.blocks = BlockProcessor.flattenBlocksRecursively(list);
+        this.blocks = flattenCompositeBlocks(list);
     }
 
     @Override
@@ -30,17 +32,25 @@ class Wall implements Structure {
         return blocks.size();
     }
 
+    private List<Block> flattenCompositeBlocks(List<Block> inputList) {
+        return inputList.stream()
+                .flatMap(block ->
+                        block instanceof CompositeBlockImpl ?
+                                flattenCompositeBlocks(((CompositeBlockImpl) block).getBlocks()).stream() :
+                                Stream.of(block))
+                .collect(Collectors.toList());
+    }
+
 }
 
-record BlockImpl(String color, String material) implements Block {
+record SimpleBlockImpl(String color, String material) implements Block {
 }
 
 class CompositeBlockImpl implements CompositeBlock {
-    private final List<Block> blocksList;
+    private final List<Block> blocksList = new ArrayList<>();
 
-    // Wyszedłem z założenia,że CompositeBlock zawsze składa się zawsze ze zwykłych bloków, a utworzenie tego bloku z wykożystaniem innych CompositeBlock-ów spowoduje utworzenie jednego większego obiektu
-    public CompositeBlockImpl(List<Block> list) {
-        this.blocksList = BlockProcessor.flattenBlocksRecursively(list);
+    public CompositeBlockImpl(Block... list) {
+        blocksList.addAll(Arrays.asList(list));
     }
 
     @Override
@@ -65,15 +75,4 @@ class CompositeBlockImpl implements CompositeBlock {
                 .orElse("Unknown");
     }
 
-}
-
-class BlockProcessor {
-    public static List<Block> flattenBlocksRecursively(List<Block> inputList) {
-        return inputList.stream()
-                .flatMap(block ->
-                        block instanceof CompositeBlockImpl ?
-                                flattenBlocksRecursively(((CompositeBlockImpl) block).getBlocks()).stream() :
-                                Stream.of(block))
-                .collect(Collectors.toList());
-    }
 }
